@@ -5,11 +5,16 @@ import useCart from "../../context/useCart";
 import { getApiError } from "../../services/api";
 import { placePublicOrder } from "../../services/publicOrderingService";
 
-const CUSTOMER_KEY = "canteenflow_employee_details_v1";
+const CUSTOMER_KEY = "bookfood_employee_details_v1";
+const LEGACY_CUSTOMER_KEY = "canteenflow_employee_details_v1";
 
 const readCustomer = () => {
   try {
-    const saved = JSON.parse(localStorage.getItem(CUSTOMER_KEY) || "{}");
+    const saved = JSON.parse(
+      localStorage.getItem(CUSTOMER_KEY) ||
+        localStorage.getItem(LEGACY_CUSTOMER_KEY) ||
+        "{}",
+    );
     return {
       customerName: String(saved.customerName || ""),
       mobile: String(saved.mobile || ""),

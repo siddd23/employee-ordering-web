@@ -1,13 +1,16 @@
-import { MdRestaurantMenu, MdSwapHoriz } from "react-icons/md";
+import { MdSwapHoriz } from "react-icons/md";
+
+import bookfoodLogo from "../../assets/bookfood-logo.png";
 
 const PublicHeader = ({ canChangeCanteen, onChangeCanteen }) => (
   <header className="public-header">
     <div className="public-header-inner">
-      <div className="public-brand" aria-label="CanteenFlow">
-        <span className="public-brand-mark">
-          <MdRestaurantMenu />
-        </span>
-        <strong>CanteenFlow</strong>
+      <div className="public-brand" aria-label="Bookfood">
+        <img
+          className="public-brand-logo"
+          src={bookfoodLogo}
+          alt="Bookfood"
+        />
       </div>
 
       {canChangeCanteen && (

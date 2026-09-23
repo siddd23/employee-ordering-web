@@ -2,10 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import CartContext from "./cart-context";
 
-const STORAGE_KEY = "canteenflow_employee_carts_v1";
+const STORAGE_KEY = "bookfood_employee_carts_v1";
+const LEGACY_STORAGE_KEY = "canteenflow_employee_carts_v1";
 const readStoredCarts = () => {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    const storedValue =
+      localStorage.getItem(STORAGE_KEY) ||
+      localStorage.getItem(LEGACY_STORAGE_KEY) ||
+      "{}";
+    const parsed = JSON.parse(storedValue);
     return parsed && typeof parsed === "object" ? parsed : {};
   } catch {
     return {};
