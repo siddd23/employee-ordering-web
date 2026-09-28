@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  MdArrowBack,
   MdCheck,
   MdClose,
   MdOutlineAccountBalanceWallet,
@@ -9,7 +10,11 @@ import {
   MdSchedule,
   MdTaskAlt,
 } from "react-icons/md";
-import { useParams, useSearchParams } from "react-router-dom";
+import {
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 
 import PageState from "../components/common/PageState";
 import PublicHeader from "../components/layout/PublicHeader";
@@ -27,8 +32,11 @@ const formatMoney = (value) =>
 
 const OrderTrackingPage = () => {
   const { orderNumber = "" } = useParams();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const trackingToken = searchParams.get("token") || "";
+  const officeCode = searchParams.get("officeCode") || "";
+  const canteenId = searchParams.get("canteenId") || "";
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -115,6 +123,20 @@ const OrderTrackingPage = () => {
   const isStopped = ["Rejected", "Cancelled"].includes(order.orderStatus);
   const isFinal = FINAL_STATUSES.has(order.orderStatus);
 
+  const returnToMenu = () => {
+    if (!officeCode) {
+      navigate(-1);
+      return;
+    }
+    const menuPath = `/order/${encodeURIComponent(officeCode)}`;
+    const query = new URLSearchParams();
+    if (canteenId) query.set("canteenId", canteenId);
+    const queryString = query.toString();
+    navigate(`${menuPath}${queryString ? `?${queryString}` : ""}`, {
+      replace: true,
+    });
+  };
+
   return (
     <div className="tracking-app">
       <PublicHeader />
@@ -195,6 +217,14 @@ const OrderTrackingPage = () => {
         >
           <MdRefresh className={refreshing ? "refresh-spinning" : ""} />
           {refreshing ? "Refreshing..." : "Refresh status"}
+        </button>
+        <button
+          type="button"
+          className="tracking-back-to-menu"
+          onClick={returnToMenu}
+        >
+          <MdArrowBack />
+          Back to menu
         </button>
         <p className="tracking-auto-refresh">
           {isFinal

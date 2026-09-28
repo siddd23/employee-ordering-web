@@ -5,7 +5,7 @@ import {
   useState,
 } from "react";
 import { MdLocationOn, MdSearch, MdStorefront } from "react-icons/md";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import CanteenSelection from "../components/canteen/CanteenSelection";
 import CartDrawer from "../components/cart/CartDrawer";
@@ -25,7 +25,9 @@ import {
 const OrderPage = () => {
   const { officeCode = "" } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const normalizedOfficeCode = officeCode.trim().toUpperCase();
+  const preferredCanteenId = searchParams.get("canteenId") || "";
   const { itemCount, subtotal, setCartScope } = useCart();
 
   const [resolution, setResolution] = useState(null);
@@ -76,7 +78,12 @@ const OrderPage = () => {
       try {
         const data = await resolveOffice(normalizedOfficeCode, signal);
         setResolution(data);
-        if (data?.canteens?.length === 1) {
+        const preferredCanteen = data?.canteens?.find(
+          (canteen) => canteen._id === preferredCanteenId,
+        );
+        if (preferredCanteen) {
+          await openCanteen(preferredCanteen, signal);
+        } else if (data?.canteens?.length === 1) {
           await openCanteen(data.canteens[0], signal);
         }
       } catch (requestError) {
@@ -86,7 +93,7 @@ const OrderPage = () => {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [normalizedOfficeCode, openCanteen],
+    [normalizedOfficeCode, openCanteen, preferredCanteenId],
   );
 
   useEffect(() => {
@@ -272,7 +279,20 @@ const OrderPage = () => {
         onSuccess={(order) => {
           setCheckoutOpen(false);
           if (order?.trackingPath) {
-            navigate(order.trackingPath, { replace: true });
+            const trackingUrl = new URL(
+              order.trackingPath,
+              window.location.origin,
+            );
+            trackingUrl.searchParams.set("officeCode", normalizedOfficeCode);
+            if (selectedCanteen?._id) {
+              trackingUrl.searchParams.set(
+                "canteenId",
+                selectedCanteen._id,
+              );
+            }
+            navigate(`${trackingUrl.pathname}${trackingUrl.search}`, {
+              replace: true,
+            });
           } else {
             setPlacedOrder(order);
           }
