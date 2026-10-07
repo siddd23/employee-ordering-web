@@ -1,9 +1,22 @@
 import { useEffect, useState } from "react";
-import { MdClose, MdLockOutline, MdPersonOutline, MdPhone } from "react-icons/md";
+import {
+  MdApartment,
+  MdClose,
+  MdLocationCity,
+  MdLockOutline,
+  MdMap,
+  MdMeetingRoom,
+  MdPersonOutline,
+  MdPhone,
+  MdPinDrop,
+} from "react-icons/md";
 
 import useCart from "../../context/useCart";
 import { getApiError } from "../../services/api";
-import { placePublicOrder } from "../../services/publicOrderingService";
+import {
+  placeMasterCanteenOrder,
+  placePublicOrder,
+} from "../../services/publicOrderingService";
 
 const CUSTOMER_KEY = "bookfood_employee_details_v1";
 const LEGACY_CUSTOMER_KEY = "canteenflow_employee_details_v1";
@@ -19,13 +32,37 @@ const readCustomer = () => {
       customerName: String(saved.customerName || ""),
       mobile: String(saved.mobile || ""),
       customerNote: "",
+      buildingName: String(saved.buildingName || ""),
+      floorOrRoom: String(saved.floorOrRoom || ""),
+      streetArea: String(saved.streetArea || ""),
+      landmark: String(saved.landmark || ""),
+      city: String(saved.city || ""),
+      pincode: String(saved.pincode || ""),
     };
   } catch {
-    return { customerName: "", mobile: "", customerNote: "" };
+    return {
+      customerName: "",
+      mobile: "",
+      customerNote: "",
+      buildingName: "",
+      floorOrRoom: "",
+      streetArea: "",
+      landmark: "",
+      city: "",
+      pincode: "",
+    };
   }
 };
 
-const CheckoutHandoff = ({ open, officeCode, canteen, onClose, onSuccess }) => {
+const CheckoutHandoff = ({
+  open,
+  officeCode,
+  publicCode,
+  isMasterQr = false,
+  canteen,
+  onClose,
+  onSuccess,
+}) => {
   const { cartItems, itemCount, subtotal, clearCart } = useCart();
   const [form, setForm] = useState(readCustomer);
   const [error, setError] = useState("");
@@ -68,12 +105,41 @@ const CheckoutHandoff = ({ open, officeCode, canteen, onClose, onSuccess }) => {
       return;
     }
 
+    const deliveryAddress = {
+      buildingName: form.buildingName.trim(),
+      floorOrRoom: form.floorOrRoom.trim(),
+      streetArea: form.streetArea.trim(),
+      landmark: form.landmark.trim(),
+      city: form.city.trim(),
+      pincode: form.pincode.trim(),
+    };
+    if (isMasterQr) {
+      if (deliveryAddress.buildingName.length < 2) {
+        setError("Enter your building or office name.");
+        return;
+      }
+      if (!deliveryAddress.floorOrRoom) {
+        setError("Enter your floor, room or desk number.");
+        return;
+      }
+      if (deliveryAddress.streetArea.length < 3) {
+        setError("Enter your street or area.");
+        return;
+      }
+      if (deliveryAddress.city.length < 2) {
+        setError("Enter your city.");
+        return;
+      }
+      if (!/^\d{6}$/.test(deliveryAddress.pincode)) {
+        setError("Enter a valid 6-digit PIN code.");
+        return;
+      }
+    }
+
     setLoading(true);
     setError("");
     try {
-      const order = await placePublicOrder({
-        officeCode,
-        canteenId: canteen._id,
+      const commonPayload = {
         customerName,
         mobile,
         customerNote,
@@ -81,10 +147,21 @@ const CheckoutHandoff = ({ open, officeCode, canteen, onClose, onSuccess }) => {
           menuItemId: item._id,
           quantity: item.quantity,
         })),
-      });
+      };
+      const order = isMasterQr
+        ? await placeMasterCanteenOrder({
+            publicCode,
+            ...commonPayload,
+            deliveryAddress,
+          })
+        : await placePublicOrder({
+            officeCode,
+            canteenId: canteen._id,
+            ...commonPayload,
+          });
       localStorage.setItem(
         CUSTOMER_KEY,
-        JSON.stringify({ customerName, mobile }),
+        JSON.stringify({ customerName, mobile, ...deliveryAddress }),
       );
       clearCart();
       setForm((current) => ({ ...current, customerNote: "" }));
@@ -140,6 +217,55 @@ const CheckoutHandoff = ({ open, officeCode, canteen, onClose, onSuccess }) => {
               />
             </div>
           </label>
+          {isMasterQr && (
+            <fieldset className="delivery-address-fields">
+              <legend>Delivery address</legend>
+              <label>
+                <span>Building or office name</span>
+                <div className="checkout-input">
+                  <MdApartment />
+                  <input name="buildingName" value={form.buildingName} onChange={updateField} maxLength={120} placeholder="Company, building or apartment" disabled={loading} />
+                </div>
+              </label>
+              <label>
+                <span>Floor, room or desk</span>
+                <div className="checkout-input">
+                  <MdMeetingRoom />
+                  <input name="floorOrRoom" value={form.floorOrRoom} onChange={updateField} maxLength={80} placeholder="Floor 2, Room 205, Desk A12" disabled={loading} />
+                </div>
+              </label>
+              <label>
+                <span>Street or area</span>
+                <div className="checkout-input">
+                  <MdMap />
+                  <input name="streetArea" value={form.streetArea} onChange={updateField} maxLength={200} placeholder="Street, sector or locality" disabled={loading} />
+                </div>
+              </label>
+              <label>
+                <span>Landmark <em>Optional</em></span>
+                <div className="checkout-input">
+                  <MdPinDrop />
+                  <input name="landmark" value={form.landmark} onChange={updateField} maxLength={120} placeholder="Nearby landmark" disabled={loading} />
+                </div>
+              </label>
+              <div className="delivery-address-row">
+                <label>
+                  <span>City</span>
+                  <div className="checkout-input">
+                    <MdLocationCity />
+                    <input name="city" value={form.city} onChange={updateField} maxLength={80} placeholder="City" disabled={loading} />
+                  </div>
+                </label>
+                <label>
+                  <span>PIN code</span>
+                  <div className="checkout-input">
+                    <MdPinDrop />
+                    <input name="pincode" value={form.pincode} onChange={updateField} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="6-digit PIN" disabled={loading} />
+                  </div>
+                </label>
+              </div>
+            </fieldset>
+          )}
           <label>
             <span>Mobile number</span>
             <div className="checkout-input">

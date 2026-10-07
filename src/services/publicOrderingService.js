@@ -24,6 +24,33 @@ export const placePublicOrder = async (payload) => {
   return response.data?.data?.order;
 };
 
+export const resolveMasterCanteen = async (publicCode, signal) => {
+  const normalizedCode = String(publicCode || "").trim().toUpperCase();
+  const response = await api.get(
+    `/public/canteens/${encodeURIComponent(normalizedCode)}`,
+    { signal },
+  );
+  return response.data?.data;
+};
+
+export const getMasterCanteenMenu = async (publicCode, signal) => {
+  const normalizedCode = String(publicCode || "").trim().toUpperCase();
+  const response = await api.get(
+    `/public/canteens/${encodeURIComponent(normalizedCode)}/menu`,
+    { signal },
+  );
+  return response.data?.data;
+};
+
+export const placeMasterCanteenOrder = async ({ publicCode, ...payload }) => {
+  const normalizedCode = String(publicCode || "").trim().toUpperCase();
+  const response = await api.post(
+    `/public/canteens/${encodeURIComponent(normalizedCode)}/orders`,
+    payload,
+  );
+  return response.data?.data?.order;
+};
+
 export const getPublicOrderTracking = async ({
   orderNumber,
   trackingToken,

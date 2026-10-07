@@ -897,6 +897,35 @@ a:focus-visible {
   margin-top: 26px;
 }
 
+.delivery-address-fields {
+  display: grid;
+  margin: 2px 0;
+  padding: 18px;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fafafa;
+}
+
+.delivery-address-fields legend {
+  padding: 0 8px;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.delivery-address-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr);
+  gap: 12px;
+}
+
+.tracking-delivery-address p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 .checkout-form label > span {
   display: flex;
   justify-content: space-between;
@@ -1530,6 +1559,14 @@ a:focus-visible {
 }
 
 @media (max-width: 680px) {
+  .delivery-address-row {
+    grid-template-columns: 1fr;
+  }
+
+  .delivery-address-fields {
+    padding: 15px;
+  }
+
   .tracking-page {
     width: min(100% - 28px, 720px);
     padding-top: 18px;

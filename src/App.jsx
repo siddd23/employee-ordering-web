@@ -8,6 +8,7 @@ function App() {
   return (
     <Routes>
       <Route path="/order/:officeCode" element={<OrderPage />} />
+      <Route path="/canteen/:publicCode" element={<OrderPage />} />
       <Route path="/track/:orderNumber" element={<OrderTrackingPage />} />
       <Route path="/404" element={<NotFoundPage />} />
       <Route path="/" element={<Navigate to="/404" replace />} />

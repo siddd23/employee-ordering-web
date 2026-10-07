@@ -5,6 +5,7 @@ import {
   MdClose,
   MdOutlineAccountBalanceWallet,
   MdOutlineReceiptLong,
+  MdPinDrop,
   MdRefresh,
   MdRestaurant,
   MdSchedule,
@@ -37,6 +38,7 @@ const OrderTrackingPage = () => {
   const trackingToken = searchParams.get("token") || "";
   const officeCode = searchParams.get("officeCode") || "";
   const canteenId = searchParams.get("canteenId") || "";
+  const publicCode = searchParams.get("publicCode") || "";
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -124,6 +126,10 @@ const OrderTrackingPage = () => {
   const isFinal = FINAL_STATUSES.has(order.orderStatus);
 
   const returnToMenu = () => {
+    if (publicCode) {
+      navigate(`/canteen/${encodeURIComponent(publicCode)}`, { replace: true });
+      return;
+    }
     if (!officeCode) {
       navigate(-1);
       return;
@@ -148,7 +154,11 @@ const OrderTrackingPage = () => {
           <span className="eyebrow">Live order status</span>
           <h1>{order.orderStatus}</h1>
           <strong className="tracking-order-number">{order.orderNumber}</strong>
-          <p>{order.canteenSnapshot?.name} · {order.officeSnapshot?.companyName}</p>
+          <p>
+            {order.canteenSnapshot?.name} · {order.orderSource === "canteen_master_qr"
+              ? "Direct master QR order"
+              : order.officeSnapshot?.companyName}
+          </p>
           {!isFinal && Number(order.estimatedPreparationTime) > 0 && (
             <span className="tracking-estimate">
               <MdSchedule /> Estimated preparation: {order.estimatedPreparationTime} min
@@ -178,6 +188,25 @@ const OrderTrackingPage = () => {
                 )}
               </div>
             ))}
+          </section>
+        )}
+
+        {order.orderSource === "canteen_master_qr" && order.deliveryAddress && (
+          <section className="tracking-card tracking-delivery-address">
+            <div className="tracking-card-title">
+              <MdPinDrop />
+              <h2>Delivery address</h2>
+            </div>
+            <p>
+              {[
+                order.deliveryAddress.buildingName,
+                order.deliveryAddress.floorOrRoom,
+                order.deliveryAddress.streetArea,
+                order.deliveryAddress.landmark,
+                order.deliveryAddress.city,
+                order.deliveryAddress.pincode,
+              ].filter(Boolean).join(", ")}
+            </p>
           </section>
         )}
 

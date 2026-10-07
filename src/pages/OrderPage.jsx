@@ -19,14 +19,18 @@ import useCart from "../context/useCart";
 import { getApiError } from "../services/api";
 import {
   getPublicMenu,
+  getMasterCanteenMenu,
+  resolveMasterCanteen,
   resolveOffice,
 } from "../services/publicOrderingService";
 
 const OrderPage = () => {
-  const { officeCode = "" } = useParams();
+  const { officeCode = "", publicCode = "" } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const normalizedOfficeCode = officeCode.trim().toUpperCase();
+  const normalizedPublicCode = publicCode.trim().toUpperCase();
+  const isMasterQr = Boolean(normalizedPublicCode);
   const preferredCanteenId = searchParams.get("canteenId") || "";
   const { itemCount, subtotal, setCartScope } = useCart();
 
@@ -50,13 +54,18 @@ const OrderPage = () => {
       setSearch("");
 
       try {
-        const menuData = await getPublicMenu({
-          officeCode: normalizedOfficeCode,
-          canteenId: canteen._id,
-          signal,
-        });
+        const menuData = isMasterQr
+          ? await getMasterCanteenMenu(normalizedPublicCode, signal)
+          : await getPublicMenu({
+              officeCode: normalizedOfficeCode,
+              canteenId: canteen._id,
+              signal,
+            });
         setMenu(menuData);
-        setCartScope(normalizedOfficeCode, canteen._id);
+        setCartScope(
+          isMasterQr ? normalizedPublicCode : normalizedOfficeCode,
+          canteen._id,
+        );
       } catch (requestError) {
         if (requestError?.code === "ERR_CANCELED") return;
         setError(getApiError(requestError, "Unable to load this canteen menu."));
@@ -64,7 +73,7 @@ const OrderPage = () => {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [normalizedOfficeCode, setCartScope],
+    [isMasterQr, normalizedOfficeCode, normalizedPublicCode, setCartScope],
   );
 
   const loadOffice = useCallback(
@@ -76,6 +85,15 @@ const OrderPage = () => {
       setMenu(null);
 
       try {
+        if (isMasterQr) {
+          const data = await resolveMasterCanteen(normalizedPublicCode, signal);
+          const canteen = data?.canteen;
+          if (!canteen) throw new Error("Canteen not found");
+          setResolution({ office: null, canteens: [canteen] });
+          await openCanteen(canteen, signal);
+          return;
+        }
+
         const data = await resolveOffice(normalizedOfficeCode, signal);
         setResolution(data);
         const preferredCanteen = data?.canteens?.find(
@@ -88,12 +106,25 @@ const OrderPage = () => {
         }
       } catch (requestError) {
         if (requestError?.code === "ERR_CANCELED") return;
-        setError(getApiError(requestError, "Unable to open this office QR."));
+        setError(
+          getApiError(
+            requestError,
+            isMasterQr
+              ? "Unable to open this canteen master QR."
+              : "Unable to open this office QR.",
+          ),
+        );
       } finally {
         if (!signal?.aborted) setLoading(false);
       }
     },
-    [normalizedOfficeCode, openCanteen, preferredCanteenId],
+    [
+      isMasterQr,
+      normalizedOfficeCode,
+      normalizedPublicCode,
+      openCanteen,
+      preferredCanteenId,
+    ],
   );
 
   useEffect(() => {
@@ -169,13 +200,15 @@ const OrderPage = () => {
         <PublicHeader />
         <PageState
           title="No canteen available"
-          message="There are no active canteens assigned to this office."
+          message={isMasterQr
+            ? "This canteen is not accepting master QR orders."
+            : "There are no active canteens assigned to this office."}
         />
       </>
     );
   }
 
-  if (!menu) {
+  if (!menu && !isMasterQr) {
     return (
       <>
         <PublicHeader />
@@ -191,7 +224,7 @@ const OrderPage = () => {
   return (
     <div className="ordering-app">
       <PublicHeader
-        canChangeCanteen={resolution.canteens.length > 1}
+        canChangeCanteen={!isMasterQr && resolution.canteens.length > 1}
         onChangeCanteen={changeCanteen}
       />
 
@@ -201,7 +234,9 @@ const OrderPage = () => {
             <MdStorefront />
           </span>
           <div>
-            <span className="eyebrow">{resolution.office.companyName}</span>
+            <span className="eyebrow">
+              {isMasterQr ? "Direct canteen ordering" : resolution.office.companyName}
+            </span>
             <h1>{menu.canteen.name}</h1>
             <p>
               <MdLocationOn />
@@ -274,6 +309,8 @@ const OrderPage = () => {
       <CheckoutHandoff
         open={checkoutOpen}
         officeCode={normalizedOfficeCode}
+        publicCode={normalizedPublicCode}
+        isMasterQr={isMasterQr}
         canteen={selectedCanteen}
         onClose={() => setCheckoutOpen(false)}
         onSuccess={(order) => {
@@ -283,8 +320,12 @@ const OrderPage = () => {
               order.trackingPath,
               window.location.origin,
             );
-            trackingUrl.searchParams.set("officeCode", normalizedOfficeCode);
-            if (selectedCanteen?._id) {
+            if (isMasterQr) {
+              trackingUrl.searchParams.set("publicCode", normalizedPublicCode);
+            } else {
+              trackingUrl.searchParams.set("officeCode", normalizedOfficeCode);
+            }
+            if (!isMasterQr && selectedCanteen?._id) {
               trackingUrl.searchParams.set(
                 "canteenId",
                 selectedCanteen._id,
